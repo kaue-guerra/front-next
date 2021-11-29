@@ -1,9 +1,12 @@
-import { Flex, Button, Stack } from '@chakra-ui/react'
+import { Flex, Button, Stack, Text } from '@chakra-ui/react'
+import React, { useRef, useCallback, useEffect, useState, useContext } from "react";
+
 import { useForm, SubmitHandler } from 'react-hook-form'
 import Link from 'next/link'
 import * as yup from 'yup'
 import { yupResolver } from '@hookform/resolvers/yup/dist/yup'
 import { Input } from '../components/Form/Input'
+import { AuthContext } from '../contexts/AuthContext'
 
 type SigninFormData = {
   email: string,
@@ -20,17 +23,19 @@ export default function Signin() {
     resolver: yupResolver(signinFormSchema)
   })
 
+  const { signIn } = useContext(AuthContext)
+
   const errors = formState.errors
 
-  const handleSignin: SubmitHandler<SigninFormData> = async (values) => {
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    console.log(values);
-
+  async function handleSignin(data) {
+    await signIn(data)
   }
 
   return (
     <Flex w="100vw" h="100vh" alignItems="center" justifyContent="center">
+
       <Flex as="form" width="100%" maxWidth={360} bg="gray.800" p="8" borderRadius={8} flexDir="column" onSubmit={handleSubmit(handleSignin)}>
+        <Text mb="6">Olá Visitante, Seja bem vindo!</Text>
         <Stack spacing="4">
           <Input name="email" type="email" label="Email" error={errors.email} {...register('email')} />
           <Input name="password" type="password" label="Senha" error={errors.password} {...register('password')} />
