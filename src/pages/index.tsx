@@ -1,5 +1,6 @@
 import { Flex, Button, Stack } from '@chakra-ui/react'
 import { useForm, SubmitHandler } from 'react-hook-form'
+import Link from 'next/link'
 import * as yup from 'yup'
 import { yupResolver } from '@hookform/resolvers/yup/dist/yup'
 import { Input } from '../components/Form/Input'
@@ -34,7 +35,8 @@ export default function Signin() {
           <Input name="email" type="email" label="Email" error={errors.email} {...register('email')} />
           <Input name="password" type="password" label="Senha" error={errors.password} {...register('password')} />
         </Stack>
-        <Button type="submit" mt="6" colorScheme="pink" size="lg" isLoading={formState.isSubmitting}>Login</Button>
+        <Button mb="4" type="submit" mt="6" colorScheme="pink" size="lg" isLoading={formState.isSubmitting}>Login</Button>
+        <Link href="/signup">Criar Conta</Link>
       </Flex>
     </Flex>
   )

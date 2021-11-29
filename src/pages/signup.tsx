@@ -1,5 +1,6 @@
 import { Box, Divider, Flex, Heading, VStack, SimpleGrid, HStack, Button } from "@chakra-ui/react"
 import { Input } from "../components/Form/Input"
+import Link from 'next/link'
 import * as yup from 'yup'
 import { yupResolver } from '@hookform/resolvers/yup/dist/yup'
 import { useForm, SubmitHandler } from 'react-hook-form'
@@ -84,7 +85,7 @@ export default function Signup() {
                     </VStack>
                     <Flex mt="8" justify="flex-end">
                         <HStack spacing="4">
-                            <Button colorScheme="whiteAlpha">Cancelar</Button>
+                            <Button colorScheme="whiteAlpha"><Link href="/">Cancelar</Link></Button>
                             <Button type="submit" colorScheme="pink" isLoading={formState.isSubmitting}>Salvar</Button>
                         </HStack>
                     </Flex>
