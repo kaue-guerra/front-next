@@ -1,13 +1,19 @@
 import { Box, Divider, Flex, Heading, VStack, SimpleGrid, HStack, Button } from "@chakra-ui/react"
 import Link from 'next/link'
 import { Input } from "../components/Form/Input"
+import { Header } from "../components/Header";
+
+import { ToastContainer, toast, Bounce } from "react-toastify";
+
 import * as yup from 'yup'
 import { yupResolver } from '@hookform/resolvers/yup/dist/yup'
 import { useForm, SubmitHandler } from 'react-hook-form'
-import { useContext, useEffect, useState } from "react"
-import { parseCookies } from "nookies"
+import { useCallback, useContext, useEffect, useState } from "react"
+import { parseCookies, destroyCookie } from "nookies"
 import { AuthContext } from "../contexts/AuthContext"
 import api from "../services/api"
+import { GetServerSideProps } from "next";
+import Router from "next/router";
 
 type editUserFormData = {
     id: string;
@@ -23,7 +29,6 @@ type editUserFormData = {
     cpf: string;
     pis: string;
     password: string;
-    password_confirmation: string;
 }
 
 const editUserFormSchema = yup.object().shape({
@@ -37,7 +42,7 @@ const editUserFormSchema = yup.object().shape({
     complement: yup.string().required('Preencha o complemento'),
     cpf: yup.string().required('Preencha seu CPF'),
     pis: yup.string().required('Preencha seu PIS'),
-    password: yup.string().required('Senha Obrigatória').min(6, 'precisa de no mínimo 6 caracteres'),
+    password: yup.string().min(6, 'precisa de no mínimo 6 caracteres'),
     password_confirmation: yup.string().oneOf([
         null, yup.ref('password')
     ], 'As senhas precisam ser iguais'),
@@ -45,51 +50,7 @@ const editUserFormSchema = yup.object().shape({
 
 export default function Profile() {
 
-    const [name, setName] = useState("");
-    const [cpf, setCpf] = useState("");
-    const [pis, setPis] = useState("");
-    const [email, setEmail] = useState("");
-    const [zipcode, setZipcode] = useState("");
-    const [street, setStreet] = useState("");
-    const [number, setNumber] = useState("");
-    const [complement, setComplement] = useState("");
-    const [city, setCity] = useState("");
-    const [state, setState] = useState("");
-    const [country, setCountry] = useState("");
-    const [userId, setUserId] = useState(1);
-
-    useEffect(() => {
-
-
-        async function loadData(): Promise<void> {
-            try {
-                const { 'userapp.token': token } = parseCookies();
-                const { user } = useContext(AuthContext)
-                const response = await api.get(`/users/${user.id}`, {
-
-                });
-
-                setName(response.data.name);
-                setCpf(response.data.document);
-                setPis(response.data.pis);
-                setEmail(response.data.email);
-                setZipcode(response.data.zipcode);
-                setStreet(response.data.street);
-                setNumber(response.data.number);
-                setComplement(response.data.complement);
-                setCity(response.data.city);
-                setState(response.data.state);
-                setCountry(response.data.country);
-                setUserId(response.data.id);
-            } catch (error) {
-            }
-        }
-
-        loadData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-
+    const { user } = useContext(AuthContext)
 
     const { register, handleSubmit, formState } = useForm({
         resolver: yupResolver(editUserFormSchema)
@@ -97,15 +58,78 @@ export default function Profile() {
 
     const errors = formState.errors
 
-    const handleEditUser: SubmitHandler<editUserFormData> = async (values) => {
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        console.log(values)
+    const handleEditUser: SubmitHandler<editUserFormData> = async (data) => {
+
+        const dataStorage = localStorage.getItem("userapp.data");
+        const dataStore = JSON.parse(`${dataStorage}`);
+
+        await api
+            .put(`/users/${dataStore.user.id}`, data, {
+                headers: {
+                    Authorization: `Bearer ${dataStore.access_token}`,
+                },
+            }).then((response) => {
+                const dataRes = {
+                    user: {
+                        id: dataStore.user.id,
+                        name: dataStore.user.name,
+                        email: dataStore.user.email,
+                    },
+                    access_token: dataStore.access_token,
+                };
+                Router.push('/dashboard')
+                localStorage.removeItem("userapp.data");
+                localStorage.setItem("userapp.data", JSON.stringify(dataStore));
+
+            }
+            )
+        toast("Dados Atualizados.", {
+            position: "top-right",
+        });
     }
+
+    const handleDeleteUser = useCallback(async (id: number) => {
+        try {
+            const dataStorage = localStorage.getItem("userapp.data");
+            const dataStore = JSON.parse(`${dataStorage}`);
+
+            await api
+                .delete(`/users/${id}`, {
+                    headers: {
+                        Authorization: `Bearer ${dataStore.accessToken}`,
+                    },
+                })
+                .then(() => {
+                    localStorage.removeItem("userapp.data");
+                    destroyCookie({}, "userapp.token");
+
+                    toast.info(
+                        `Usuário Deletado. Redirecionando para tela de login...`,
+                        {
+                            position: "top-right",
+                        }
+                    );
+
+                    setTimeout(() => {
+                        Router.push("/");
+                    }, 5000);
+                });
+        } catch (error) {
+            toast.error(`${error["detail"]}`, {
+                position: "top-right",
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+
 
 
 
     return (
         <Box>
+            <Header />
+            <ToastContainer transition={Bounce} />
             <Flex w="100%" my="2" maxWidth={1480} mx="auto" px="6" >
                 <Box as="form" flex="1" borderRadius={8} bg="gray.800" p="4" onSubmit={handleSubmit(handleEditUser)} >
                     <Heading size="lg" fontWeight="normal" >Editar Usuário</Heading>
@@ -114,32 +138,32 @@ export default function Profile() {
 
                     <VStack spacing="6">
                         <SimpleGrid minChildWidth="240px" spacing="6" w="100%">
-                            <Input value={name} name="name" label="Nome Completo" error={errors.name} {...register('name')} />
-                            <Input value={email} name="email" type="email" label="E-mail" error={errors.email} {...register('email')} />
+                            <Input defaultValue={user.name} type="text" name="name" label="Nome Completo" error={errors.name} {...register('name')} />
+                            <Input defaultValue={user.email} name="email" type="email" label="E-mail" error={errors.email} {...register('email')} />
                         </SimpleGrid>
                         <SimpleGrid minChildWidth="240px" spacing="6" w="100%">
-                            <Input value={city} name="city" label="Cidade" error={errors.city} {...register('city')} />
-                            <Input value={zipcode} name="zipcode" label="Cep" error={errors.zipcode} {...register('zipcode')} />
-                            <Input value={country} name="country" label="País" error={errors.country} {...register('country')} />
-                            <Input value={state} name="state" label="Estado" error={errors.state} {...register('state')} />
+                            <Input defaultValue={user.city} type="text" name="city" label="Cidade" error={errors.city} {...register('city')} />
+                            <Input defaultValue={user.zipcode} type="text" name="zipcode" label="Cep" error={errors.zipcode} {...register('zipcode')} />
+                            <Input defaultValue={user.country} type="text" name="country" label="País" error={errors.country} {...register('country')} />
+                            <Input defaultValue={user.state} type="text" name="state" label="Estado" error={errors.state} {...register('state')} />
                         </SimpleGrid>
                         <SimpleGrid minChildWidth="240px" spacing="6" w="100%">
-                            <Input value={street} name="street" label="Rua" error={errors.street} {...register('street')} />
-                            <Input value={number} name="Number" label="Número" error={errors.number} {...register('number')} />
-                            <Input value={complement} name="complement" label="Complemento" error={errors.complement} {...register('complement')} />
+                            <Input defaultValue={user.street} type="text" name="street" label="Rua" error={errors.street} {...register('street')} />
+                            <Input defaultValue={user.number} type="text" name="Number" label="Número" error={errors.number} {...register('number')} />
+                            <Input defaultValue={user.complement} type="text" name="complement" label="Complemento" error={errors.complement} {...register('complement')} />
                         </SimpleGrid>
                         <SimpleGrid minChildWidth="240px" spacing="6" w="100%">
-                            <Input value={cpf} name="cpf" label="CPF" error={errors.cpf} {...register('cpf')} />
-                            <Input value={pis} name="pis" label="PIS" error={errors.pis} {...register('pis')} />
+                            <Input defaultValue={user.cpf} type="text" name="cpf" label="CPF" error={errors.cpf} {...register('cpf')} />
+                            <Input defaultValue={user.pis} type="text" name="pis" label="PIS" error={errors.pis} {...register('pis')} />
                         </SimpleGrid>
                         <SimpleGrid minChildWidth="240px" spacing="4" w="100%">
                             <Input name="password" label="Senha" type="password" error={errors.password} {...register('password')} />
-                            <Input name="password_confirmation" label="Confirmação da senha" type="password" error={errors.password_confirmation} {...register('password')} />
                         </SimpleGrid>
                     </VStack>
                     <Flex mt="8" justify="flex-end">
                         <HStack spacing="4">
                             <Button colorScheme="whiteAlpha"><Link href="/dashboard">Cancelar</Link></Button>
+                            <Button onClick={() => handleDeleteUser(user.id)} type="submit" colorScheme="red" isLoading={formState.isSubmitting}>Deletar</Button>
                             <Button type="submit" colorScheme="pink" isLoading={formState.isSubmitting}>Salvar</Button>
                         </HStack>
                     </Flex>
@@ -148,4 +172,23 @@ export default function Profile() {
             </Flex>
         </Box>
     )
+}
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+    const { ['userapp.token']: token } = parseCookies(ctx)
+
+    if (!token) {
+        return {
+            redirect: {
+                destination: '/',
+                permanent: false,
+            }
+        }
+    }
+
+    return {
+        props: {
+        }
+    }
+
 }

@@ -6,7 +6,9 @@ import { GetServerSideProps } from 'next';
 import { parseCookies } from 'nookies';
 
 export default function Dashboard() {
-    const { user } = useContext(AuthContext)
+
+    const dataStorage = localStorage.getItem("userapp.data");
+    const dataStore = JSON.parse(`${dataStorage}`);
 
     return (
         <Flex direction="column" h="100vh">
@@ -17,7 +19,7 @@ export default function Dashboard() {
                 mx="auto"
                 px="6"
             >
-                <Text>Bem vindo</Text>
+                <Text>Bem vindo {dataStore.user.name}</Text>
             </Flex>
         </Flex>
     )

@@ -1,9 +1,16 @@
 import { Box, Divider, Flex, Heading, VStack, SimpleGrid, HStack, Button } from "@chakra-ui/react"
 import { Input } from "../components/Form/Input"
 import Link from 'next/link'
+
+import { ToastContainer, toast, Bounce } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 import * as yup from 'yup'
 import { yupResolver } from '@hookform/resolvers/yup/dist/yup'
 import { useForm, SubmitHandler } from 'react-hook-form'
+import api from "../services/api"
+import { setCookie } from "nookies"
+import Router from 'next/router'
 
 type CreateUserFormData = {
     name: string;
@@ -22,8 +29,8 @@ type CreateUserFormData = {
 }
 
 const createUserFormSchema = yup.object().shape({
-    email: yup.string().required('E-mail Obrigatório').email('E-mail Inválido'),
     name: yup.string().required('Preencha seu nome'),
+    email: yup.string().required('E-mail Obrigatório').email('E-mail Inválido'),
     country: yup.string().required('Preencha seu País'),
     city: yup.string().required('Preencha sua cidade'),
     state: yup.string().required('Preencha seu estado (UF)'),
@@ -39,19 +46,36 @@ const createUserFormSchema = yup.object().shape({
 })
 
 export default function Signup() {
+
     const { register, handleSubmit, formState } = useForm({
         resolver: yupResolver(createUserFormSchema)
     })
 
     const errors = formState.errors
 
-    const handleCreateUser: SubmitHandler<CreateUserFormData> = async (values) => {
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        console.log(values)
+    const handleCreateUser: SubmitHandler<CreateUserFormData> = async (data) => {
+        await api
+            .post("/auth/signup", data).then((response) => {
+                const { data } = response
+                toast.info(
+                    `Usuário Criado com sucesso. Redirecionando para tela de login...`,
+                    {
+                        position: "top-right",
+                    })
+                setTimeout(() => {
+                    Router.push("/");
+                }, 5000);
+            }
+            ).catch((err) => {
+                toast(`${err.response.data['detail']}`), {
+                    position: "top-right"
+                }
+            })
     }
 
     return (
         <Box>
+            <ToastContainer transition={Bounce} />
             <Flex w="100%" my="2" maxWidth={1480} mx="auto" px="6" >
                 <Box as="form" flex="1" borderRadius={8} bg="gray.800" p="4" onSubmit={handleSubmit(handleCreateUser)} >
                     <Heading size="lg" fontWeight="normal" >Criar Usuário</Heading>
@@ -60,27 +84,26 @@ export default function Signup() {
 
                     <VStack spacing="6">
                         <SimpleGrid minChildWidth="240px" spacing="6" w="100%">
-                            <Input name="name" label="Nome Completo" error={errors.name} {...register('name')} />
-                            <Input name="email" type="email" label="E-mail" error={errors.email} {...register('email')} />
+                            <Input name="name" type="text" label="Nome Completo" error={errors.name} {...register('name')} />
+                            <Input name="email" label="E-mail" error={errors.email} {...register('email')} />
                         </SimpleGrid>
                         <SimpleGrid minChildWidth="240px" spacing="6" w="100%">
-                            <Input name="city" label="Cidade" error={errors.city} {...register('city')} />
-                            <Input name="zipcode" label="Cep" error={errors.zipcode} {...register('zipcode')} />
-                            <Input name="country" label="País" error={errors.country} {...register('country')} />
-                            <Input name="state" label="Estado" error={errors.state} {...register('state')} />
+                            <Input name="city" type="text" label="Cidade" error={errors.city} {...register('city')} />
+                            <Input name="zipcode" type="text" label="Cep" error={errors.zipcode} {...register('zipcode')} />
+                            <Input name="country" type="text" label="País" error={errors.country} {...register('country')} />
+                            <Input name="state" type="text" label="Estado" error={errors.state} {...register('state')} />
                         </SimpleGrid>
                         <SimpleGrid minChildWidth="240px" spacing="6" w="100%">
-                            <Input name="street" label="Rua" error={errors.street} {...register('street')} />
-                            <Input name="Number" label="Número" error={errors.number} {...register('number')} />
-                            <Input name="complement" label="Complemento" error={errors.complement} {...register('complement')} />
+                            <Input name="street" type="text" label="Rua" error={errors.street} {...register('street')} />
+                            <Input name="Number" type="text" label="Número" error={errors.number} {...register('number')} />
+                            <Input name="complement" type="text" label="Complemento" error={errors.complement} {...register('complement')} />
                         </SimpleGrid>
                         <SimpleGrid minChildWidth="240px" spacing="6" w="100%">
-                            <Input name="cpf" label="CPF" error={errors.cpf} {...register('cpf')} />
-                            <Input name="pis" label="PIS" error={errors.pis} {...register('pis')} />
+                            <Input name="cpf" type="text" label="CPF" error={errors.cpf} {...register('cpf')} />
+                            <Input name="pis" type="text" label="PIS" error={errors.pis} {...register('pis')} />
                         </SimpleGrid>
                         <SimpleGrid minChildWidth="240px" spacing="4" w="100%">
                             <Input name="password" label="Senha" type="password" error={errors.password} {...register('password')} />
-                            <Input name="password_confirmation" label="Confirmação da senha" type="password" error={errors.password_confirmation} {...register('password')} />
                         </SimpleGrid>
                     </VStack>
                     <Flex mt="8" justify="flex-end">
